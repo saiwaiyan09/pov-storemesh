@@ -1,0 +1,25 @@
+flowchart LR
+    browser["User / Browser"]
+    host["Host port 80"]
+    nginx["Nginx reverse proxy<br/>container :80"]
+    react["React + Vite<br/>container :3000"]
+    django["Django REST API + Gunicorn<br/>container :8000"]
+    postgres["PostgreSQL 15.2<br/>container :5432"]
+    volume[("Named volume<br/>postgres_data")]
+
+    browser <-->|"HTTP request / response"| host
+    host <-->|"published 80:80"| nginx
+
+    subgraph appnet["Docker application bridge network"]
+        nginx -->|"/ → frontend:3000"| react
+        nginx -->|"/api/ → backend:8000<br/>prefix preserved"| django
+        nginx -. "Vite WebSocket upgrade" .-> react
+    end
+
+    subgraph dbnet["Docker internal database network"]
+        django <-->|"Docker DNS: db:5432"| postgres
+        postgres --- volume
+    end
+
+    classDef boundary fill:#f5f6ff,stroke:#8585e8,stroke-width:1px
+    class appnet,dbnet boundary
